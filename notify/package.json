@@ -1,0 +1,12 @@
+{
+  "name": "scadenzario-notify",
+  "version": "1.0.0",
+  "description": "Script notifiche FCM per Scadenzario",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

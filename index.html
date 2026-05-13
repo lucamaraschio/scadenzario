@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📅 Scadenzario</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0c0d12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Scadenzario">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0d12;
+      --surface: #16171f;
+      --surface2: #1e2029;
+      --border: #2a2b35;
+      --text: #e8e9f0;
+      --text-muted: #6b6d7d;
+      --luca: #7dd3fc;
+      --vanessa: #f9a8d4;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --green: #4ade80;
+      --active-color: #7dd3fc;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .header {
+      padding: 28px 20px 8px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .header .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 16px 20px;
+    }
+    .tab {
+      flex: 1;
+      padding: 11px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active[data-owner="luca"]    { border-color: var(--luca);    color: var(--luca);    background: rgba(125,211,252,0.08); }
+    .tab.active[data-owner="vanessa"] { border-color: var(--vanessa); color: var(--vanessa); background: rgba(249,168,212,0.08); }
+
+    /* BANNER */
+    .banner {
+      margin: 0 20px 12px;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .banner.hidden { display: none; }
+    #notif-bar {
+      background: rgba(251,191,36,0.08);
+      border: 1px solid rgba(251,191,36,0.25);
+      color: var(--amber);
+    }
+    #install-bar {
+      background: rgba(125,211,252,0.08);
+      border: 1px solid rgba(125,211,252,0.25);
+      color: var(--luca);
+    }
+
+    /* SECTION LABEL */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 0 20px;
+      margin-bottom: 8px;
+      margin-top: 4px;
+    }
+
+    /* CARDS */
+    .cards {
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 14px 14px 14px 18px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: transform 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover { transform: translateY(-1px); }
+    .card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .card.urgent::before  { background: var(--red); }
+    .card.warning::before { background: var(--amber); }
+    .card.ok::before      { background: var(--green); }
+    .card.expired::before { background: #3a3b46; }
+
+    .card-icon {
+      font-size: 26px;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface2);
+      border-radius: 11px;
+      flex-shrink: 0;
+    }
+    .card-body { flex: 1; min-width: 0; }
+    .card-name {
+      font-size: 15px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-date { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .card-badge {
+      font-size: 12px; font-weight: 700;
+      padding: 4px 10px; border-radius: 20px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .card.urgent  .card-badge { background: rgba(248,113,113,0.12); color: var(--red); }
+    .card.warning .card-badge { background: rgba(251,191,36,0.12);  color: var(--amber); }
+    .card.ok      .card-badge { background: rgba(74,222,128,0.12);  color: var(--green); }
+    .card.expired .card-badge { background: rgba(107,109,125,0.12); color: var(--text-muted); }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty .big { font-size: 52px; margin-bottom: 14px; }
+    .empty p { font-size: 15px; line-height: 1.6; }
+
+    .loading {
+      text-align: center; padding: 60px 20px;
+      color: var(--text-muted); font-size: 15px;
+    }
+
+    /* FAB */
+    .fab {
+      position: fixed;
+      bottom: 28px;
+      left: 50%; transform: translateX(-50%);
+      width: calc(min(480px, 100vw) - 40px);
+      background: var(--active-color);
+      color: #000;
+      border: none; border-radius: 14px;
+      padding: 15px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      transition: background 0.2s, transform 0.15s;
+      z-index: 50;
+    }
+    .fab:hover { transform: translateX(-50%) translateY(-2px); }
+
+    /* OVERLAY + MODAL */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .overlay.hidden { display: none; }
+    .modal {
+      background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      padding: 24px 20px 44px;
+      width: 100%; max-width: 480px;
+      border: 1px solid var(--border); border-bottom: none;
+      max-height: 92vh; overflow-y: auto;
+    }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: var(--border); border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+
+    /* FORM */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: var(--text-muted); margin-bottom: 7px;
+      text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px; outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .form-group input:focus,
+    .form-group select:focus { border-color: var(--active-color); }
+    .form-group select option { background: var(--surface2); }
+
+    /* CATEGORY GRID */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .cat-btn {
+      aspect-ratio: 1;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      padding: 4px;
+    }
+    .cat-btn .cat-emoji { font-size: 22px; }
+    .cat-btn .cat-label { font-size: 9.5px; color: var(--text-muted); text-align: center; line-height: 1.2; font-family: 'Outfit', sans-serif; }
+    .cat-btn.selected { border-color: var(--active-color); background: rgba(125,211,252,0.08); }
+    .cat-btn.selected .cat-label { color: var(--active-color); }
+
+    /* BUTTONS */
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+    .btn {
+      flex: 1; padding: 14px; border-radius: 12px; border: none;
+      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary   { background: var(--active-color); color: #000; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-danger    { background: rgba(248,113,113,0.12); color: var(--red); border: 1.5px solid rgba(248,113,113,0.3); }
+
+    #cards-container { padding-bottom: 100px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📅 Scadenzario</h1>
+  <div class="subtitle">Tieni tutto sotto controllo</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-owner="luca"    onclick="switchTab('luca')">👤 Luca</button>
+  <button class="tab"        data-owner="vanessa" onclick="switchTab('vanessa')">👤 Vanessa</button>
+</div>
+
+<div id="notif-bar"   class="banner hidden" onclick="requestNotifications()">🔔 Attiva le notifiche per i promemoria</div>
+<div id="install-bar" class="banner hidden" onclick="installPWA()">📲 Aggiungi alla schermata Home</div>
+
+<div id="cards-container">
+  <div class="loading">Caricamento…</div>
+</div>
+
+<button class="fab" id="fab-btn" onclick="openModal()">＋ Aggiungi scadenza</button>
+
+<!-- MODAL -->
+<div class="overlay hidden" id="modal-overlay">
+  <div class="modal" id="modal-box">
+    <div class="modal-handle"></div>
+    <h2 id="modal-title">Nuova scadenza</h2>
+
+    <div class="form-group">
+      <label>Categoria</label>
+      <div class="cat-grid" id="cat-grid"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Nome (opzionale — sovrascrive la categoria)</label>
+      <input type="text" id="input-name" placeholder="es. Bollo Fiat 500 Vanessa">
+    </div>
+
+    <div class="form-group">
+      <label>Data scadenza</label>
+      <input type="date" id="input-date">
+    </div>
+
+    <div class="form-group">
+      <label>Promemoria anticipato</label>
+      <select id="input-notify">
+        <option value="7">7 giorni prima</option>
+        <option value="14">14 giorni prima</option>
+        <option value="30" selected>30 giorni prima</option>
+        <option value="60">60 giorni prima</option>
+        <option value="90">90 giorni prima</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Note (opzionale)</label>
+      <input type="text" id="input-notes" placeholder="es. Agenzia Via Roma, Targa AB123CD">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary"   onclick="saveDeadline()">Salva</button>
+    </div>
+    <div class="btn-row" id="delete-row" style="display:none; margin-top:0;">
+      <button class="btn btn-danger" onclick="deleteDeadline()">🗑 Elimina scadenza</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+
+<script>
+// ════════════════════════════════════════════════
+//  ⚙️  CONFIGURAZIONE FIREBASE  ← modifica qui
+// ════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBv_PVm2_x2TpEKXD529VqIRV95P8yAaVo",
+  authDomain:        "scadenzario-e9d66.firebaseapp.com",
+  databaseURL:       "https://scadenzario-e9d66-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "scadenzario-e9d66",
+  storageBucket:     "scadenzario-e9d66.firebasestorage.app",
+  messagingSenderId: "665846613887",
+  appId:             "1:665846613887:web:1658c2c15a9710ae8afc4a"
+};
+
+const VAPID_KEY = 'BKKZu69aq4Hlju3OmoclL21sX9LeVtNlI55N93tZFyPvmNCbeg3AF8Nf5ptsBkp3-tQWffEymM98VZZcTsgrAV4';
+
+// ════════════════════════════════════════════════
+//  CATEGORIE
+// ════════════════════════════════════════════════
+const CATEGORIES = [
+  { id: 'bollo',        emoji: '🚗', label: 'Bollo auto' },
+  { id: 'assicAuto',    emoji: '🛡️', label: 'Assic. auto' },
+  { id: 'tagliando',    emoji: '🔧', label: 'Tagliando' },
+  { id: 'giroRuote',    emoji: '🔄', label: 'Giro ruote' },
+  { id: 'assicCasa',    emoji: '🏠', label: 'Assic. casa' },
+  { id: 'modello730',   emoji: '📋', label: '730' },
+  { id: 'cartaId',      emoji: '🪪', label: 'Carta ID' },
+  { id: 'passaporto',   emoji: '🛂', label: 'Passaporto' },
+  { id: 'visita',       emoji: '💊', label: 'Visita medica' },
+  { id: 'abbonamento',  emoji: '💳', label: 'Abbonamento' },
+  { id: 'tasse',        emoji: '💰', label: 'Tasse / IMU' },
+  { id: 'altro',        emoji: '📄', label: 'Altro' },
+];
+
+// ════════════════════════════════════════════════
+//  STATO
+// ════════════════════════════════════════════════
+let db;
+let currentTab      = 'luca';
+let editingId       = null;
+let selectedCat     = null;
+let currentRef      = null;
+let currentListener = null;
+let swRegistration  = null;
+let allDeadlines    = { luca: [], vanessa: [] };
+let deferredInstall = null;
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+firebase.initializeApp(FIREBASE_CONFIG);
+db = firebase.database();
+
+setActiveColor('luca');
+loadTab('luca');
+registerSW();
+checkNotificationPermission();
+listenInstallPrompt();
+
+// ════════════════════════════════════════════════
+//  SERVICE WORKER
+// ════════════════════════════════════════════════
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register('./sw.js');
+    console.log('[SW] Registrato:', swRegistration.scope);
+  } catch (e) {
+    console.error('[SW] Registrazione fallita:', e);
+  }
+}
+
+async function registerFCMToken() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const messaging = firebase.messaging();
+    const token = await messaging.getToken({
+      vapidKey:          VAPID_KEY,
+      serviceWorkerRegistration: swRegistration
+    });
+    if (token) {
+      // Salva il token su Firebase associato al device
+      const deviceId = getDeviceId();
+      await db.ref('fcm_tokens/' + deviceId).set({
+        token,
+        updatedAt: Date.now()
+      });
+      console.log('[FCM] Token registrato');
+    }
+  } catch (e) {
+    console.error('[FCM] Errore token:', e);
+  }
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem('scad_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).slice(2, 11);
+    localStorage.setItem('scad_device_id', id);
+  }
+  return id;
+}
+
+function sendToSW(deadlines) {
+  if (!navigator.serviceWorker?.controller) return;
+  navigator.serviceWorker.controller.postMessage({
+    type: 'DEADLINES_UPDATE',
+    deadlines
+  });
+}
+
+// ════════════════════════════════════════════════
+//  PWA INSTALL
+// ════════════════════════════════════════════════
+function listenInstallPrompt() {
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstall = e;
+    document.getElementById('install-bar').classList.remove('hidden');
+  });
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('install-bar').classList.add('hidden');
+    deferredInstall = null;
+  });
+}
+
+async function installPWA() {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  const { outcome } = await deferredInstall.userChoice;
+  if (outcome === 'accepted') deferredInstall = null;
+}
+
+// ════════════════════════════════════════════════
+//  TAB
+// ════════════════════════════════════════════════
+function switchTab(owner) {
+  currentTab = owner;
+  document.querySelectorAll('.tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.owner === owner)
+  );
+  setActiveColor(owner);
+  loadTab(owner);
+}
+
+function setActiveColor(owner) {
+  const color = owner === 'luca' ? '#7dd3fc' : '#f9a8d4';
+  document.documentElement.style.setProperty('--active-color', color);
+  document.getElementById('fab-btn').style.background = color;
+}
+
+// ════════════════════════════════════════════════
+//  CARICA DATI
+// ════════════════════════════════════════════════
+function loadTab(owner) {
+  document.getElementById('cards-container').innerHTML =
+    '<div class="loading">Caricamento…</div>';
+
+  if (currentRef && currentListener) {
+    currentRef.off('value', currentListener);
+  }
+
+  currentRef = db.ref('scadenzario/' + owner);
+  currentListener = currentRef.on('value', snap => {
+    const data  = snap.val() || {};
+    const items = Object.entries(data).map(([id, v]) => ({ id, ...v }));
+    allDeadlines[owner] = items;
+    renderCards(items);
+
+    // Invia tutte le scadenze al service worker (entrambi gli utenti)
+    const merged = [...allDeadlines.luca, ...allDeadlines.vanessa];
+    sendToSW(merged);
+  });
+}
+
+// ════════════════════════════════════════════════
+//  RENDER CARDS
+// ════════════════════════════════════════════════
+function renderCards(items) {
+  const container = document.getElementById('cards-container');
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="big">📅</div>
+        <p>Nessuna scadenza ancora.<br>Aggiungine una!</p>
+      </div>`;
+    return;
+  }
+
+  items.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const expired = items.filter(i => daysUntil(i.date) < 0);
+  const urgent  = items.filter(i => { const d = daysUntil(i.date); return d >= 0 && d <= 30; });
+  const warning = items.filter(i => { const d = daysUntil(i.date); return d > 30 && d <= 90; });
+  const ok      = items.filter(i => daysUntil(i.date) > 90);
+
+  let html = '';
+
+  if (expired.length || urgent.length) {
+    html += '<div class="section-label">⚠️ Attenzione</div><div class="cards">';
+    [...expired, ...urgent].forEach(i => html += cardHTML(i));
+    html += '</div>';
+  }
+  if (warning.length) {
+    html += '<div class="section-label">🟡 In arrivo</div><div class="cards">';
+    warning.forEach(i => html += cardHTML(i));
+    html += '</div>';
+  }
+  if (ok.length) {
+    html += '<div class="section-label">✅ In regola</div><div class="cards">';
+    ok.forEach(i => html += cardHTML(i));
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+function cardHTML(item) {
+  const days = daysUntil(item.date);
+  const cat  = CATEGORIES.find(c => c.id === item.category) || CATEGORIES[CATEGORIES.length - 1];
+
+  let cls, badge;
+  if (days < 0) {
+    cls = 'expired'; badge = `Scaduto ${Math.abs(days)}g fa`;
+  } else if (days <= 30) {
+    cls = 'urgent';  badge = days === 0 ? '⚡ Oggi!' : `${days}g`;
+  } else if (days <= 90) {
+    cls = 'warning'; badge = `${days}g`;
+  } else {
+    cls = 'ok';      badge = `${days}g`;
+  }
+
+  const name  = item.name || cat.label;
+  const notes = item.notes ? ` · ${item.notes}` : '';
+
+  return `<div class="card ${cls}" onclick="openModal('${item.id}')">
+    <div class="card-icon">${cat.emoji}</div>
+    <div class="card-body">
+      <div class="card-name">${escHtml(name)}</div>
+      <div class="card-date">${formatDate(item.date)}${escHtml(notes)}</div>
+    </div>
+    <div class="card-badge">${badge}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════════════
+function openModal(id = null) {
+  editingId   = id;
+  selectedCat = null;
+
+  document.getElementById('cat-grid').innerHTML = CATEGORIES.map(c => `
+    <button class="cat-btn" data-id="${c.id}" onclick="selectCat('${c.id}')">
+      <span class="cat-emoji">${c.emoji}</span>
+      <span class="cat-label">${c.label}</span>
+    </button>`).join('');
+
+  if (id) {
+    document.getElementById('modal-title').textContent  = 'Modifica scadenza';
+    document.getElementById('delete-row').style.display = 'flex';
+
+    db.ref('scadenzario/' + currentTab + '/' + id).once('value', snap => {
+      const item = snap.val();
+      selectCat(item.category);
+      document.getElementById('input-name').value   = item.name   || '';
+      document.getElementById('input-date').value   = item.date   || '';
+      document.getElementById('input-notify').value = item.notifyDays || 30;
+      document.getElementById('input-notes').value  = item.notes  || '';
+    });
+  } else {
+    document.getElementById('modal-title').textContent  = 'Nuova scadenza';
+    document.getElementById('delete-row').style.display = 'none';
+    document.getElementById('input-name').value   = '';
+    document.getElementById('input-date').value   = '';
+    document.getElementById('input-notify').value = '30';
+    document.getElementById('input-notes').value  = '';
+  }
+
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  editingId   = null;
+  selectedCat = null;
+}
+
+function selectCat(id) {
+  selectedCat = id;
+  document.querySelectorAll('.cat-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.id === id)
+  );
+}
+
+// ════════════════════════════════════════════════
+//  SALVA / ELIMINA
+// ════════════════════════════════════════════════
+async function saveDeadline() {
+  if (!selectedCat) { alert('Seleziona una categoria'); return; }
+  const date = document.getElementById('input-date').value;
+  if (!date)  { alert('Inserisci la data di scadenza'); return; }
+
+  const cat        = CATEGORIES.find(c => c.id === selectedCat);
+  const customName = document.getElementById('input-name').value.trim();
+
+  const data = {
+    category:   selectedCat,
+    name:       customName || cat.label,
+    date,
+    notifyDays: parseInt(document.getElementById('input-notify').value),
+    notes:      document.getElementById('input-notes').value.trim(),
+    updatedAt:  Date.now()
+  };
+
+  const path = 'scadenzario/' + currentTab + '/';
+  if (editingId) {
+    await db.ref(path + editingId).update(data);
+  } else {
+    await db.ref(path).push(data);
+  }
+  closeModal();
+}
+
+async function deleteDeadline() {
+  if (!confirm('Eliminare questa scadenza?')) return;
+  await db.ref('scadenzario/' + currentTab + '/' + editingId).remove();
+  closeModal();
+}
+
+// ════════════════════════════════════════════════
+//  NOTIFICHE
+// ════════════════════════════════════════════════
+function checkNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    document.getElementById('notif-bar').classList.remove('hidden');
+  } else if (Notification.permission === 'granted') {
+    // Già concesso — aggiorna il token se necessario
+    setTimeout(registerFCMToken, 2000);
+  }
+}
+
+async function requestNotifications() {
+  const p = await Notification.requestPermission();
+  if (p === 'granted') {
+    document.getElementById('notif-bar').classList.add('hidden');
+    await registerFCMToken();
+  }
+}
+
+// ════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════
+function daysUntil(dateStr) {
+  const today  = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00'); target.setHours(0, 0, 0, 0);
+  return Math.round((target - today) / 86_400_000);
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+</script>
+</body>
+</html>
