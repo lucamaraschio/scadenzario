@@ -1,0 +1,29 @@
+name: Invia Notifiche Scadenzario
+
+on:
+  schedule:
+    - cron: '0 7 * * *'   # ogni mattina alle 7:00 UTC (9:00 ora italiana)
+    - cron: '0 12 * * *'  # mezzogiorno
+    - cron: '0 18 * * *'  # sera
+  workflow_dispatch:        # avvio manuale per testare
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Installa dipendenze
+        run: npm install
+        working-directory: ./notify
+
+      - name: Invia notifiche
+        run: node index.js
+        working-directory: ./notify
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL:    ${{ secrets.FIREBASE_DATABASE_URL }}
