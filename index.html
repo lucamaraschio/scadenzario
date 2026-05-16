@@ -167,6 +167,21 @@
     .card.ok      .card-badge { background: rgba(74,222,128,0.12);  color: var(--green); }
     .card.expired .card-badge { background: rgba(107,109,125,0.12); color: var(--text-muted); }
 
+    .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+    .done-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface2); color: var(--text-muted);
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.18s; flex-shrink: 0;
+    }
+    .done-btn:hover  { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.1); transform: scale(1.1); }
+    .done-btn:active { transform: scale(0.95); }
+    @keyframes doneFlash {
+      0%   { opacity:1; } 40% { opacity:0.2; background:rgba(74,222,128,0.15); } 100% { opacity:1; }
+    }
+    .card.done-flash { animation: doneFlash 0.45s ease; }
+
     /* EMPTY STATE */
     .empty {
       text-align: center;
@@ -340,6 +355,18 @@
     </div>
 
     <div class="form-group">
+      <label>Rinnovo automatico</label>
+      <select id="input-renew">
+        <option value="annual"     selected>Annuale (ogni anno)</option>
+        <option value="semestral"         >Semestrale (ogni 6 mesi)</option>
+        <option value="quarterly"         >Trimestrale (ogni 3 mesi)</option>
+        <option value="bimonthly"         >Bimestrale (ogni 2 mesi)</option>
+        <option value="monthly"           >Mensile (ogni mese)</option>
+        <option value="none"              >Nessun rinnovo automatico</option>
+      </select>
+    </div>
+
+    <div class="form-group">
       <label>Note (opzionale)</label>
       <input type="text" id="input-notes" placeholder="es. Agenzia Via Roma, Targa AB123CD">
     </div>
@@ -394,8 +421,24 @@ const CATEGORIES = [
 ];
 
 // ════════════════════════════════════════════════
-//  STATO
+//  PERIODI DI RINNOVO
 // ════════════════════════════════════════════════
+const RENEW_PERIODS = {
+  annual:     { months: 12 },
+  semestral:  { months: 6  },
+  quarterly:  { months: 3  },
+  bimonthly:  { months: 2  },
+  monthly:    { months: 1  },
+  none:       null
+};
+const RENEW_LABELS = {
+  annual:    '↻ annuale',
+  semestral: '↻ semestrale',
+  quarterly: '↻ trimestrale',
+  bimonthly: '↻ bimestrale',
+  monthly:   '↻ mensile',
+  none:      ''
+};
 let db;
 let currentTab      = 'luca';
 let editingId       = null;
@@ -592,16 +635,20 @@ function cardHTML(item) {
     cls = 'ok';      badge = `${days}g`;
   }
 
-  const name  = item.name || cat.label;
-  const notes = item.notes ? ` · ${item.notes}` : '';
+  const name   = item.name || cat.label;
+  const notes  = item.notes ? ` · ${item.notes}` : '';
+  const renew  = RENEW_LABELS[item.renewPeriod || 'annual'] || '';
 
-  return `<div class="card ${cls}" onclick="openModal('${item.id}')">
+  return `<div class="card ${cls}" id="card-${item.id}" onclick="openModal('${item.id}')">
     <div class="card-icon">${cat.emoji}</div>
     <div class="card-body">
       <div class="card-name">${escHtml(name)}</div>
       <div class="card-date">${formatDate(item.date)}${escHtml(notes)}</div>
     </div>
-    <div class="card-badge">${badge}</div>
+    <div class="card-right">
+      <div class="card-badge">${badge}</div>
+      <button class="done-btn" title="Segna come fatto" onclick="markAsDone(event,'${item.id}')">✓</button>
+    </div>
   </div>`;
 }
 
@@ -629,6 +676,7 @@ function openModal(id = null) {
       document.getElementById('input-date').value   = item.date   || '';
       document.getElementById('input-notify').value = item.notifyDays || 30;
       document.getElementById('input-notes').value  = item.notes  || '';
+      document.getElementById('input-renew').value  = item.renewPeriod || 'annual';
     });
   } else {
     document.getElementById('modal-title').textContent  = 'Nuova scadenza';
@@ -637,6 +685,7 @@ function openModal(id = null) {
     document.getElementById('input-date').value   = '';
     document.getElementById('input-notify').value = '30';
     document.getElementById('input-notes').value  = '';
+    document.getElementById('input-renew').value  = 'annual';
   }
 
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -667,12 +716,13 @@ async function saveDeadline() {
   const customName = document.getElementById('input-name').value.trim();
 
   const data = {
-    category:   selectedCat,
-    name:       customName || cat.label,
+    category:    selectedCat,
+    name:        customName || cat.label,
     date,
-    notifyDays: parseInt(document.getElementById('input-notify').value),
-    notes:      document.getElementById('input-notes').value.trim(),
-    updatedAt:  Date.now()
+    notifyDays:  parseInt(document.getElementById('input-notify').value),
+    renewPeriod: document.getElementById('input-renew').value,
+    notes:       document.getElementById('input-notes').value.trim(),
+    updatedAt:   Date.now()
   };
 
   const path = 'scadenzario/' + currentTab + '/';
@@ -688,6 +738,45 @@ async function deleteDeadline() {
   if (!confirm('Eliminare questa scadenza?')) return;
   await db.ref('scadenzario/' + currentTab + '/' + editingId).remove();
   closeModal();
+}
+
+// ════════════════════════════════════════════════
+//  SEGNA COME FATTO → rinnova la data
+// ════════════════════════════════════════════════
+async function markAsDone(event, id) {
+  event.stopPropagation(); // non aprire il modal
+
+  const snap = await db.ref('scadenzario/' + currentTab + '/' + id).once('value');
+  const item = snap.val();
+  if (!item) return;
+
+  const period = item.renewPeriod || 'annual';
+  const rule   = RENEW_PERIODS[period];
+
+  if (!rule) {
+    // Nessun rinnovo: chiedi conferma eliminazione o solo feedback visivo
+    if (confirm(`"${item.name}" non ha rinnovo automatico.\nEliminarla?`)) {
+      await db.ref('scadenzario/' + currentTab + '/' + id).remove();
+    }
+    return;
+  }
+
+  const newDate = nextDate(rule.months);
+
+  // Animazione flash sulla card
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.add('done-flash');
+
+  await db.ref('scadenzario/' + currentTab + '/' + id).update({
+    date:      newDate,
+    updatedAt: Date.now()
+  });
+}
+
+function nextDate(months) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().split('T')[0];
 }
 
 // ════════════════════════════════════════════════
